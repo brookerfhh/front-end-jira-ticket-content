@@ -60,6 +60,7 @@ UI - IK 支持：特定 Dish Type 下的 Side Component（在 task 上新增 IK 
 - 不论 task 的 mapping option 是否为空、也不论 task 数量多少（即使只有一个 task），都允许 CE 为 task 指定 IK Dish Type；task 级别优先于 menu item 级别
 - Change Log 也要加上 task 的 IK Dish Type 字段
 
+copy linbebuild？
 ### [MD-18175](https://wonder.atlassian.net/browse/MD-18175)
 
 UI - Task 级 Cooking Group（KDS 路由配置）
@@ -86,15 +87,16 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 
 > 主 ticket：[MD-18167](https://wonder.atlassian.net/browse/MD-18167)
 
-- 在「Usages」card 新增 IK Portion Conversion 区块，点击「Add」打开配置弹窗（交互参考 KDS portion 的配置弹窗），仅需配置一个 `x portion = x g` 的换算，并显示提示 `The IK portion conversion is required for IK Pod.`
+- 在「Usages」card 新增 IK Portion Conversion 区块，点击「Add」打开配置弹窗（交互参考 KDS portion 的配置弹窗），仅需配置一个 `x portion = x g` 的换算，并显示提示 `The IK portion conversion is required for IK Pod.` success message？
 - IK Portion Conversion 是 component 级别的：active final 或 scheduled version 任一改动都会同时作用于两个 version（active 的改动也同步到 draft）；当前为 final 或 scheduled version 时，才在「Add」按钮处以 tip 展示 `The change will be implied in both active and future versions.`
-- 如果当前是draft version 中并且该item 存在已经publish 过的version 的时候，置灰按钮不可编辑，并在「Add」按钮处以 tip 展示 `Please update it in active version.`
+- 如果当前是draft version 中并且该item 存在已经publish 过的version 的时候，置灰按钮不可编辑，并在「Add」按钮处以 tip 展示 `Please update it in active version.`不包含过期
 - 当 machine eligible=true 时，发布 component 需校验 portion → g 换算必填，缺失则拦截发布并显示 error 提示
 - 在 edit attribute 弹窗保存时，遍历属性列表，只要其中有一项 attribute name = 「machine eligible」且值为 yes，就校验当前 item 是否已配置 IK Portion（portion → g 换算）：已配置则直接保存通过、不弹窗；未配置则弹出「配置 IK Portion Conversion」弹窗，用户配置保存后返回 edit attribute 弹窗，点取消同样返回 edit attribute 弹窗
 - attribute 值设为 no（或未勾选）时不触发上述校验
 - 「配置 IK Portion Conversion」弹窗需做成可复用组件（「Usages」card 常规入口与 edit attribute 联动流程共用）
 - Move to variant 场景：variant 中 IK Portion Conversion 区块置灰禁止编辑，提示 `Please maintain it in normal version.`
 - Change Log 也要加上 IK Portion Conversion 字段
+
 
 ### [MD-18109](https://wonder.atlassian.net/browse/MD-18109)
 
@@ -129,15 +131,7 @@ UI - 在 Customization Usages 支持 Bulk Swap Item
 - change history 页增加 Customization Usages 的对比（comparison）
 - 记录 change log
 
-**主 ticket MD-17832 需求说明**
 
-背景：
-- mandatory choice / optional addition / extra request 当前只能映射 40\*/70\* item（映射项不在 menu item 第一层）；其中 extra request 还可映射第一层组件项或 mandatory choice/optional addition 里的映射项
-- on the side / Optional Subtraction / Dish Preference：可映射第一层组件项或 recipe 80\*/88\*/5\* item；若映射的是 recipe 80\*/88\*/5\*（属菜单项子组件），则无需更新 menu item component
-
-方案：
-- 保留现有逻辑：从 menu item component swap item 时，若旧 item 用在 customization 中，也要一并 swap
-- 记录 customization 变更 / component 变更的 change log，触发点 = Bulk swap customization usage
 
 按主 item 类型的替换规则：
 
