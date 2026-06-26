@@ -75,10 +75,11 @@ UI - Task 级 Cooking Group（KDS 路由配置）
 
 Auto-select：step 勾选 IK eligible 时自动带出 default IK plating rule
 
-- IK eligible checkbox 从 null → true：把该 step 下所有当前 IK plating rule 为 null 的 substep 自动选为「default」（不论 substep 映射的 item / option 是什么）
-- IK eligible checkbox 从 true → null：清空该 step 下所有 substep 的 IK plating rule（default 和 custom 选择都移除）
+- IK eligible checkbox 勾选 从 null → true：把该 step 下所有当前 IK plating rule 为 null 的 substep 自动选为「default」（不论 substep 映射的 item / option 是什么）
+- IK eligible checkbox 取消勾选 从 true → null：清空该 step 下所有 substep 的 IK plating rule（default 和 custom 选择都移除）
 - 在 IK eligible=true 的 step 下新增 substep 时，自动把 IK plating rule 选为 default；否则不自动选
 
+12
 ### [MD-18174](https://wonder.atlassian.net/browse/MD-18174)
 
 UI - 在 Component 级配置 IK Portion Conversion（份量换算）
@@ -86,8 +87,8 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 > 主 ticket：[MD-18167](https://wonder.atlassian.net/browse/MD-18167)
 
 - 在「Usages」card 新增 IK Portion Conversion 区块，点击「Add」打开配置弹窗（交互参考 KDS portion 的配置弹窗），仅需配置一个 `x portion = x g` 的换算，并显示提示 `The IK portion conversion is required for IK Pod.`
-- IK Portion Conversion 为 component 级：active final 或 scheduled version 任一改动都会同时作用于两个 version（active 的改动也同步到 draft）；当前为 final 或 scheduled version 时，才在「Add」按钮处以 tip 展示 `The change will be implied in both active and future versions.`
-- 当 active final version 已存在时，draft version 中该区块置灰不可编辑，并在「Add」按钮处以 tip 展示 `Please update it in active version.`
+- IK Portion Conversion 是 component 级别的：active final 或 scheduled version 任一改动都会同时作用于两个 version（active 的改动也同步到 draft）；当前为 final 或 scheduled version 时，才在「Add」按钮处以 tip 展示 `The change will be implied in both active and future versions.`
+- 如果当前是draft version 中并且该item 存在已经publish 过的version 的时候，置灰按钮不可编辑，并在「Add」按钮处以 tip 展示 `Please update it in active version.`
 - 当 machine eligible=true 时，发布 component 需校验 portion → g 换算必填，缺失则拦截发布并显示 error 提示
 - 在 edit attribute 弹窗保存时，遍历属性列表，只要其中有一项 attribute name = 「machine eligible」且值为 yes，就校验当前 item 是否已配置 IK Portion（portion → g 换算）：已配置则直接保存通过、不弹窗；未配置则弹出「配置 IK Portion Conversion」弹窗，用户配置保存后返回 edit attribute 弹窗，点取消同样返回 edit attribute 弹窗
 - attribute 值设为 no（或未勾选）时不触发上述校验
