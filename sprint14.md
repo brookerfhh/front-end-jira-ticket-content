@@ -128,3 +128,34 @@ UI - 在 Customization Usages 支持 Bulk Swap Item
 - 区别于 BOM usage：需支持数据聚合——同一 menu item 有多个 customization usage 时，按 menu item number 聚合展示，参考 Customization Usages 的 Bulk Edit（`page/item/detail/components/ItemUsage/BulkEditUsage/CustomizationUsage/CustomizationUsageBulkEdit.tsx`）
 - change history 页增加 Customization Usages 的对比（comparison）
 - 记录 change log
+
+**主 ticket MD-17832 需求说明**
+
+背景：
+- mandatory choice / optional addition / extra request 当前只能映射 40\*/70\* item（映射项不在 menu item 第一层）；其中 extra request 还可映射第一层组件项或 mandatory choice/optional addition 里的映射项
+- on the side / Optional Subtraction / Dish Preference：可映射第一层组件项或 recipe 80\*/88\*/5\* item；若映射的是 recipe 80\*/88\*/5\*（属菜单项子组件），则无需更新 menu item component
+
+方案：
+- 保留现有逻辑：从 menu item component swap item 时，若旧 item 用在 customization 中，也要一并 swap
+- 记录 customization 变更 / component 变更的 change log，触发点 = Bulk swap customization usage
+
+按主 item 类型的替换规则：
+
+| 主 item 类型 | Customization Usages 行为 |
+| --- | --- |
+| 40 / 7\* item | 显示全部类型：mandatory choice / optional addition / extra request / on the side / Optional Subtraction / Dish Preference；能替换的也是只能是 40\*/70\*；新替换项 BOM unit 须与原项一致，否则报错 `Unable to bulk edit {tab name}. The BOM unit of replacement item should be the same as the original item ({BOM Unit}) is missing, please select another one.`； |
+| recipe 80\* / 88\* / 5\* item | 仅显示：on the side / Optional Subtraction / Dish Preference；替换项可为 80\*/88\*/5\*/40\*/70\*；|
+| 9\* item | 显示可映射非食品项的 customization 类型（Optional Subtraction 除外）；替换项须为 90\*（子类型 = guest packaged 或 internal packaged）； |
+
+
+
+自动化测试分享：
+Recon-before-write:先侦察真实页面拿到准确锚点。
+闭环生成:recon 真实页面 → 出可审的用例(tests.md)→ 生成脚本 → 跑验证
+"不留垃圾数据"策略:有删除→幂等 create→delete;只创建→开表单+校验+取消;只读→只验加载。可反复跑、不污染 QA。
+
+
+Agent skill(regression-add-page):把整套流程固化进 repo,一句话生成。
+知识库(PAGES.md):从源码沉淀每页元素/能力/隐藏规则 → QA 不读代码也能生成。
+免 MCP recon:用诊断脚本侦察,零额外安装。
+认证:SessionId 注入 / storageState 绕登录,跨 app 通用。
