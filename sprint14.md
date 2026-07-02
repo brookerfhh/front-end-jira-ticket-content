@@ -97,6 +97,62 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 - Move to variant 场景：variant 中 IK Portion Conversion 区块置灰禁止编辑，提示 `Please maintain it in normal version.`
 - Change Log 也要加上 IK Portion Conversion 字段
 
+> ⚠️ 6/30 更新（Bonnie）：功能更名为 **Minimal Serving Portion Conversion**；区块对**所有 object type**展示；提示语改为 `The minimal serving portion conversion is required for IK Pod and Wonder Create Item.`；发布/edit-attribute 校验触发条件增加 **wonder create=eligible**；新增两个权限点（common + benchtop）；输入框限正整数。
+> 逻辑调整：draft 且有未过期已发布版本时 **Add 允许、只禁用 edit/delete**。
+
+#### 测试用例（QA checklist）
+
+**1. Usages 卡片 · 展示**
+- [ ] 所有 object type 详情页都能看到「Minimal Serving Portion Conversion」区块（ingredient / recipe / by-product / packaged / HDR recipe / HDR consumable / benchtop / WSKU）
+- [ ] 标题旁 info 图标 hover：`The minimal serving portion conversion is required for IK Pod and Wonder Create Item.`
+- [ ] 未配置显示 `None`；已配置显示 `x portion = x g`
+
+**2. 新建 / 编辑弹窗**
+- [ ] 布局 `[Portion] portion = [BOM Usage] g`，单位与输入框对齐
+- [ ] Portion / BOM Usage 只能正整数（不能小数 / 负数 / 0 / 字母），必填校验
+- [ ] 保存成功 toast + 区块刷新
+- [ ] 编辑预填当前值、改后生效
+- [ ] 删除有二次确认弹窗，确认后变 None
+
+**3. 版本管控（核心）**
+- [ ] active(FINAL)/scheduled：可增删改；hover 按钮显示 `The change will be implied in both active and future versions.`
+- [ ] draft 且有未过期已发布版本：**Add 可点**；编辑/删除置灰，hover `Please update it in active version.`
+- [ ] draft 且只有过期已发布 / 从未发布：增删改都可用
+- [ ] variant：Add + 编辑 + 删除全置灰，hover `Please maintain it in normal version.`
+- [ ] 过期版本：只读无按钮
+- [ ] 无权限：只读无按钮
+
+**4. 权限（两个权限点）**
+- [ ] common 权限 → 普通 item 可编辑
+- [ ] benchtop 专属权限 → benchtop item 可编辑；无则只读
+- [ ] 两权限独立（有 common 无 benchtop 时 benchtop item 只读）
+
+**5. Edit Attribute 联动**
+- [ ] Machine Eligible = Yes 且未配置 → 保存属性时弹出配置弹窗（不直接保存）
+- [ ] Wonder Create = Eligible 同样触发
+- [ ] 已配置 → 直接保存不弹窗；Machine Eligible=No/未选 → 不触发
+- [ ] 弹窗标题下红字：`Minimal serving portion conversion is required for machine eligible/wonder create component.`
+- [ ] 配置保存 / 取消 → 都回到 edit attribute 弹窗
+- [ ] 无 configure 权限 → 弹窗 Save 置灰，hover `Missing configure minimal serving portion permission`
+- [ ] 多条属性时只要有一条 Yes 就触发
+
+**6. 发布校验（后端）**
+- [ ] Machine Eligible=true 或 Wonder Create=eligible 且未配置 → 拦截发布，报错 `Unable to publish the version. Minimal serving portion conversion is required for machine eligible/wonder create component. Please configure it before trying again.`
+- [ ] 已配置 → 正常发布
+
+**7. Change Log**
+- [ ] 增/改/删后 Change History 出现「Minimal Serving Portion Conversion」卡片
+- [ ] Only show changes 开启：有变化才显示，换算行黄色高亮
+- [ ] 左右版本对比各自显示 `x portion = x g`
+
+**8. 版本继承 / 复制（后端行为，前端验证展示）**
+- [ ] 复制新版本 / 新 item：换算一并复制
+- [ ] Move to draft：draft 继承 active 换算
+- [ ] Move to variant：不复制到 variant，且区块置灰
+- [ ] active/scheduled 改动 → 两个版本都生效并同步 draft
+
+> 重点回归：#3 版本管控（draft 的 Add 可用 / edit-delete 锁）、#5 edit-attribute 联动、#7 change log 高亮。
+
 
 ### [MD-18109](https://wonder.atlassian.net/browse/MD-18109)
 
