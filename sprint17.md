@@ -37,15 +37,7 @@
 6. API 需把 `required` 标记返回给 Pantry / Consumer App
 7. variant item 版本 Required gray out
 
-> 前端关注点（代码定位，模块 `src/page/item/customizationV2/`）：
-> - **Main menu item 侧** —— create/edit customization 弹窗 `CreateOrUpdate/components/CreateOptionModal.tsx`（内层依次为 `CreateOptionForm.tsx` 组级表单 → `OptionValues.tsx` option 列表 → `CreateOptionValue.tsx` 单个 option 表单）。互斥对象 `in_eligible` 就在 `CreateOptionValue.tsx:218-249`，形态是**一个 Switch + 右侧 `Yes`/`No` 文字**，label 带 Popover（`Ineligible` / `Only hide the option for the main menu item from Wonder App.`），variant item 时禁用。
-> - **Preset 侧** —— `Presets/Edit/OptionTable/OptionTableEdit.tsx`，`in_eligible` 形态是**表格里的 Checkbox 列**，已选中的 option 会被禁用并提示 `Cannot set selected option as ineligible.`（`:383-388`）。
-> - **`none` 选项的识别**：字段为 `is_none`（`CreateOrUpdate/type.ts:75`），无需额外判断逻辑。
-> - **已存在一条互斥规则**：`in_eligible` 与 `is_default_value` 不能同时为真，报错 `Unable to save, cannot set default option to ineligible: {name}.`（`useCreateOptionAction.tsx:329-333`、`560-562`）。本次的 `required` ↔ `in_eligible` 是第二条互斥，两条需并存。按需求示例（chicken 为 required 且 default portion = 2），`required` 与 `is_default_value` 是允许共存的。
-> - **数量校验有现成模式可复用**：现有 max/min choices 校验已在 4 处使用 `option_values.filter(it => !it.is_none).filter(it => !it.in_eligible)`（`CreateOptionForm.tsx:325/374/477/518`），required 的数量校验在此链上追加 required 过滤即可。
-> - **`required` 的控件形态跟随 `in_eligible`**：main 侧用 Switch + `Yes`/`No`，preset 侧用表格 Checkbox 列 —— 两处形态不统一是既有实现的现状，`required` 各自沿用所在位置的形态，不另做统一。
-> - 其余改动点：change history 对比（`changeHistory/widget/Customization.tsx`、`PresetsCustomization.tsx`）、copy item / new version 的字段继承。
-
+---
 
 ### [MD-18356](https://wonder.atlassian.net/browse/MD-18356)
 
@@ -68,11 +60,6 @@
    - 正文：`The main menu item has no longer sold in the below restaurants, is it ok to remove them for saving the line build? Invalid restaurants: {restaurant name1}, {restaurant name2}.`
    - 按钮：`Cancel`、`Yes`
 
-> 前端关注点：
-> - **保存流程已有现成的 warning modal 队列机制可直接挂载**：`src/page/item/lineBuild/component/Header/saveHelper.tsx`（1257 行）中已有 `KDSPortionWarningSection` / `buildKDSPortionWarningModal`（MD-18030 的 KDS portion warning）与后端驱动的 `not_machine_eligible_ik_step_warnings`（MD-18149），并已按「hard block（直接拦截）」与「non-blocking warning（确认后继续）」分层；`useSave.tsx`（564 行）按顺序 await 这个 ModalQueue。`Invalid Restaurant` 弹窗接入这套机制即可，无需新建流程。
-> - **但它与现有 warning 的形态不同**：现有 warning 都是「确认后原样提交」，本条是「确认后需先移除失效引用、再提交」，属于队列里的新形态。
-> - 属于当前正在改动的 line build 区域（`src/page/item/detail/pages/lineBuildList/`、`src/page/item/lineBuild/`），与 MD-18336 有代码重叠风险。
->- 假设某个 line build 只挂了 3 家餐厅，结果这 3 家全都因为 concept/brand 链变动而失效了。如果严格按 ticket 说的"确认后自动批量移除"，那移除完剩 0 个，请求体里 restaurant_ids 就是 null。用户点了一下"Yes"，本意是"删掉那几家失效的"，实际结果却是这个 line build 从"只作用于 3 家店"变成了"作用于全部门店"。
 ---
 
 ### [MD-18347](https://wonder.atlassian.net/browse/MD-18347)
@@ -127,8 +114,37 @@ UI - 允许把整个 customization group 标记为 ineligible
 UI - 调整 Wonder Create Debug Page 的 customization 逻辑
 
 > 主 ticket：[MD-18372](https://wonder.atlassian.net/browse/MD-18372)
+> **该 sub-task 与主 ticket 的 description 都是空的**，以下需求来自 2026-08-11 与 RA 的口头沟通 + 后端已合并代码（`origin/develop@2ba40e9281a`）反推，已固化在 openspec `md-18385-wonder-create-debug-v2-page/`
+> 后端接口由 MD-18372 提供（Felix / Henry），已合 develop
 
-- 该 sub-task 与其主 ticket 均无描述，需求待补
+**背景**：MD-18372 交付了 Wonder Create V2 后端 —— 一套**基于 customization option、支持多 item、异步发布**的新流程，四个接口挂在 `/ajax/wonder-create/v2/*`。前端目前一个都没接。
+
+现有的 debug 页（`src/page/wonderCreateDebug`，MD-18054 交付）接的是 V1，两版契约在 UI 关心的每个维度上都不一样：
+
+
+**需求**
+
+1. **新页面 `wonder-create-debug-v2`，并把新旧两个页面收进同一个父菜单**
+   - 菜单结构从「一个顶层项」改成「一个父菜单 + 两个子项」：`Wonder Create Debug` 下挂 V1 与 V2 两个子页面（容器 route 只写 `children`、不写 `component`，参照 `src/page/attributeV2/route.ts`；Nav 已有 SubMenu 分支，无需改渲染逻辑）
+   - **旧页面保留不动**（V1 接口还在线上跑，两版可以对照着调）
+   - 复用 V1 的同一个 DevCycle flag `cookbook-enable-wonder-create-debug-page`，一个开关同时放出整个父菜单（不新增 flag、不新增 permission code）
+   - 父菜单默认 `hidden`，两个子页面组件内各自再做一次守卫防直接敲 URL；flag 异步 resolve 期间显示 loading 不误跳转（照抄 V1）
+2. **Tab：Bowl / Wrap**
+   - `item_type` 是 list 接口的**请求参数**，所以切 tab = 重新发请求，不是客户端过滤
+   - **有勾选时禁止切 tab**（勾选跨 tab 带不过去，切了就是静默丢弃）；`Add` 会清空勾选，正常流程不会被卡
+3. **操作区上移** —— 搜索 / 分类筛选 / 排序 / 已选计数 / `Add` 全部挪到表格**上方**（现在在表格下方）
+4. **Options 表格**
+   - 列：`PORTION`（可编辑）/ `OPTION`（名称 + 所属 customization）/ `CATEGORY` / `TYPE` / `IMG` / `COST`（food + non-food）/ `NUTRITION` / `ALLERGENS` / `BOM`
+   - 搜索改为按 option 名 / customization 名 / category 多 token AND 匹配（V1 是按 item number / name）
+5. **待发布列表（新增）**
+   - 勾几个 option → 点 `Add` → 生成一条待发布 item，可删、可就地改 external item id / name
+   - **列表只显示当前 tab 的，但 `Validate` / `Publish` 发全部（两个 tab 合并成一个 `items[]`，一次请求 = 一个 task）**
+   - 因此按钮上标**总数**并显示 tab 拆分，否则列表显示 2 条却发了 5 条会误导
+6. **Task 列表（新增）**
+   - 每次 publish 成功记一条（`task_id` + 时间 + preview 摘要）；`task_id` 为 null 表示同步就失败了，不记 task 只写日志
+   - **纯内存态，刷新即丢**，不限条数
+   - 点开抽屉才调一次 `taskStatus`，结果缓存；抽屉里有手动 `Refresh`，**不做轮询**
+   - 抽屉正文是 `preview` 与 `taskStatus.items` 按 `external_item_id` join 的表：`external_item_id | change_type | status | item_number | message`
 
 ---
 
@@ -161,7 +177,7 @@ UI - New UX - Line build 分配：强制只有一个 'All' 选项，并提供优
    - sub-tab 命名由 `Line Build 1` 改为 `Line Build 1(All)`，All 那条带 `(All)` 后缀
 
 1. **编辑 restaurant（解耦出来的独立入口）**
-   - 每条 line build 的 `⋮` 菜单新增 `Assign Restaurants`，打开弹窗、预填当前 restaurant
+   - 每条 line build 新增 `Assign Restaurants` 入口（作为**外露按钮**，见下面「操作栏重排」），打开弹窗、预填当前 restaurant
    - 可选具体 restaurant 或 `All`；保存时调后端 check，不通过则原地报错
    - **只改 restaurant 归属，不动这条 line build 的 task**
    - 配套：**编辑页里的 `Apply To Restaurant(s)` 全场景置灰** —— create / duplicate / edit 三种进入方式都不可编辑
@@ -172,11 +188,21 @@ UI - New UX - Line build 分配：强制只有一个 'All' 选项，并提供优
 
 3. **编辑页离开时的二次确认**
    - 从新页面进 create / edit 编辑页后，**只要表单动过，离开就弹确认**；没动过则直接走，不拦
-   - 覆盖三个出口：`Cancel` 按钮、站内跳转 / 浏览器返回、刷新或关标签页
-   - 参考 assembly 的现成实现（`assemblyInstructions/component/AssemblyInstructionIndex.tsx:167-180`）：标题 `Unsaved Changes`、正文 `You have unsaved changes on the form. Are you sure you want to leave?`、确认按钮 `Continue`；脏判断用一个 flag 记录用户是否真的改过
+   - 覆盖两个出口：`Cancel` 按钮、站内跳转 / 浏览器返回
+   - **不做刷新 / 关标签页的拦截** —— `beforeunload` 用不了自定义文案，浏览器强制显示自己的通用对话框，做了也是那个样子；assembly 那个实现同样没做
+   - 文案照抄 assembly（`assemblyInstructions/component/AssemblyInstructionIndex.tsx:167-180`）：标题 `Unsaved Changes`、正文 `You have unsaved changes on the form. Are you sure you want to leave?`、确认按钮 `Continue`
+   - 脏判断用 `<Form onValuesChange>` 打一个 ref，2 行的事。不会误触发：表单初始化走的是 `form.setFields()`（`useLineBuildForm.tsx:87`），而 rc-field-form 的 `onValuesChange` 只在用户输入路径上触发，`setFields` / `setFieldsValue` 都不触发；页面里其他程序化写值（餐厅互斥、hot hold 回写、KDS 内联错误字段）同理
+   - ⚠️ 必须做脏判断，不能"进来就弹"：这个编辑页有 **readonly 模式**（`View Line Build` 走 `?readonly=true` 进的是同一个页面），只是来看一眼的用户退出时弹「你有未保存的修改」是错的；而且每次都弹会训练用户无脑点确认，真有内容那次也照点不误
    - ⚠️ create 模式进来时页面已经自动生成了一个 3 步空脚手架，**不能把脚手架本身当成「改过」**，否则用户点错进来想退出也会被拦
 
-4. **从其他 line build 复制 details**
+4. **每条 line build 的操作栏重排（只改新 UI，旧 UI 一行不动）**
+   - 现状（`lineBuildList/component/LineBuildTable.tsx`）：外面依次是 `View Line Build` / `Training Card` / `Edit Line Build` / `⋮`，`⋮` 里是 `Export to JSON` / `Duplicate` / `Delete`
+   - 改为外面留三个：**`View Line Build` / `Assign Restaurants` / `Edit Line Build`**；`⋮` 里是 `Training Card`、`Export to JSON`、`Duplicate`、`Delete`，加上新增的 `Copy from other Line Build`
+   - `View Line Build` **不受编辑权限限制、恒在外面** —— `Assign Restaurants` 和 `Edit Line Build` 都要 `canEditByFlag && hasEditLineBuildPermission`，只读用户否则会一个外露按钮都没有
+   - `Training Card` 现在是个自带按钮 + 弹窗的组件（`TrainingCard/index.tsx`），收进菜单要把触发器和弹窗拆开，且不能改动旧 UI 的调用形态
+   - multi-usage / multi-version 走的旧 UI 保持原样，两套界面在这里故意不一致
+
+5. **从其他 line build 复制 details**
    - `⋮` 菜单新增 `Copy from other Line Build`，二级菜单列出**除当前这条以外**的所有 line build，选中后二次确认「会覆盖当前这条的数据且不可撤销」
    - **只覆盖 task，不改 restaurant 归属** —— 这是它和 `Duplicate` 的根本区别
    - 只有一条时禁用，提示 `No other line build to copy from`
@@ -202,8 +228,8 @@ UI - New UX - Line build 分配：强制只有一个 'All' 选项，并提供优
 **待确认问题**
 
 1. **在编辑页刷新怎么办？** 弹窗选的 restaurant 只在前端内存里，刷新就没了。目前方案是退回 Line Build tab 让用户重来（此时他一个字都还没填，损失为零）。若要求刷新后保住选择，弹窗确认时就必须落库，等于回到「会产生空 line build」的模型，要额外做清理逻辑
-2. **`Assign Restaurants` 能不能真的把默认切到另一条？** Case 2 说保存时校验「有且只有一个 `All`」。那从 `{LB1=All, LB2=A,B}` 切成 `{LB1=C,D,E, LB2=All}` 该怎么操作？先改 LB1 会变成零条、先改 LB2 会变成两条，两边都触发这条校验。是不是意味着它只能增减具体 restaurant、换默认只能走第 4 点的 copy？
-3. **隐藏 `Configuration` 的三个连带影响**：① 用户没法再把 single version item 改成 multi，过渡期能接受吗 ② 这两个开关是 **item version 维度**（不是 item 维度），同一个 item 切版本时界面会在新旧之间跳（V6 multi / V7 single）③ `Create New Version` 时开关继承吗，若继承则现存 multi item 在 MD-18397 之前永远进不了新界面
+2. **隐藏 `Configuration` 按钮**： ② 这两个开关是 **item version 维度**（不是 item 维度），
+3. 新页面只运行 single version，那同一个 item 切版本时界面会在新旧之间跳（V6 multi / V7 single）③ `Create New Version` 时开关继承吗，若继承则现存 multi item 永远进不了新界面
 
 ---
 
