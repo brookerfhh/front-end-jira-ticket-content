@@ -25,17 +25,13 @@
 1. 给 customization option 新增 `Required` 标记：
    1. 只适用于 customization type = `mandatory choice`（其中 `none` 选项排除，置灰）
    2. 可在 **main menu item** 和 **preset** 上分别配置
-   3. 同一个 group 内允许勾选多个 option 为 required
+   3. 同一个 customization group 内允许勾选多个 option 为 required
    4. `ineligible` 与 `required` **不能同时勾选**，勾选其一则另一个置灰，并显示 tip
 2. 当 max options 不为 null 时，required option 的 portion qty 或 option 数量应 `<= max options`（**ticket 原文标注 TBD**），报错文案：
    - `Unable to save. Required option amount should be <= max options ({value}).`
-3. **示例（ticket 中为未决的二选一）**：preset `Chicken Bowl` 中 chicken 被标为 required、default portion = 2，若 chicken 库存只有 1，该 preset 是否 OOS？
-   - 方案 a：库存 1 就 OOS → 顾客不能选 chicken x1 + tofu x1，需要在 Cookbook / Wonder App / Pantry 三侧都加校验逻辑，且要**新增参数**（如 chicken required, `min portion = 2`），否则 Pantry/App 无法识别 required 的份量
-   - 方案 b：库存 1 时仍可售 → 顾客可以选 chicken x1 + tofu x1
-4. `required` 标记要进 change log
-5. copy new item / create new version 时**继承** `required` 标记
-6. API 需把 `required` 标记返回给 Pantry / Consumer App
-7. variant item 版本 Required gray out
+3. `required` 标记要进 change log
+4. copy new item / create new version 时**继承** `required` 标记
+5. variant item 版本 Required gray out
 
 ---
 
