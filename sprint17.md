@@ -72,7 +72,7 @@
 > - **保存流程已有现成的 warning modal 队列机制可直接挂载**：`src/page/item/lineBuild/component/Header/saveHelper.tsx`（1257 行）中已有 `KDSPortionWarningSection` / `buildKDSPortionWarningModal`（MD-18030 的 KDS portion warning）与后端驱动的 `not_machine_eligible_ik_step_warnings`（MD-18149），并已按「hard block（直接拦截）」与「non-blocking warning（确认后继续）」分层；`useSave.tsx`（564 行）按顺序 await 这个 ModalQueue。`Invalid Restaurant` 弹窗接入这套机制即可，无需新建流程。
 > - **但它与现有 warning 的形态不同**：现有 warning 都是「确认后原样提交」，本条是「确认后需先移除失效引用、再提交」，属于队列里的新形态。
 > - 属于当前正在改动的 line build 区域（`src/page/item/detail/pages/lineBuildList/`、`src/page/item/lineBuild/`），与 MD-18336 有代码重叠风险。
-
+>- 假设某个 line build 只挂了 3 家餐厅，结果这 3 家全都因为 concept/brand 链变动而失效了。如果严格按 ticket 说的"确认后自动批量移除"，那移除完剩 0 个，请求体里 restaurant_ids 就是 null。用户点了一下"Yes"，本意是"删掉那几家失效的"，实际结果却是这个 line build 从"只作用于 3 家店"变成了"作用于全部门店"。
 ---
 
 ### [MD-18347](https://wonder.atlassian.net/browse/MD-18347)
@@ -81,9 +81,7 @@
 
 > 主 ticket（Epic）：[MD-18363](https://wonder.atlassian.net/browse/MD-18363) Feature simplify
 
-能清理的代码不多，
-
-> 前端关注点：menu / 7\* 的屏蔽已由 `ComponentsV2/Action/index.tsx:56` 的 `showCreatePackagedItem = object_type !== MENU && object_type !== HDR_RECIPE` 实现，入口按钮已不渲染；88\* 要保留该功能，所以 `CreatePackage/` 组件、按钮、弹窗都必须留着，那行判断本身也不能删。实际可清理的只有两处：`Action/Edit.tsx:4` 未使用的 `import CreatePackageItem`，以及 `Action/ShowTable.tsx:130` 的 `handleEdit` 中 `if (r.isCreateNewItem)` 分支缺少 item type 判断。
+能清理的代码不多，20几行代码但是测试是需要回归测试的。
 
 ---
 
@@ -99,16 +97,7 @@
 
 ---
 
-### [MD-18377](https://wonder.atlassian.net/browse/MD-18377)
 
-CLONE - [Tech] 给所有功能补齐 Amplitude 埋点
-
-> 主 ticket（Epic）：[MD-17231](https://wonder.atlassian.net/browse/MD-17231) @2026 Cookbook Technical Excellence
-
-- 本条是 Sprint 16 的 [MD-18317](https://wonder.atlassian.net/browse/MD-18317) 的 clone，需求相同：Amplitude 客户端已存在于 `src/utils/analytics/`，只需补覆盖
-- 上一轮已覆盖导入 / 导出入口，本轮继续排查全站其他关键操作的遗漏埋点
-
----
 
 ### [MD-18383](https://wonder.atlassian.net/browse/MD-18383)
 
@@ -118,29 +107,18 @@ UI - 允许把整个 customization group 标记为 ineligible
 
 **背景**：Cookbook 允许对 main BYO menu item 与 preset 分别配置 customization（ineligible / min options / max options 等），此前有一条「每个 customization group 至少要有一个 eligible option」的校验。而 Wonder Create 项目要求限制顾客把默认选项换成更低成本的选项，因此当某个 group 的所有 option 在某个 preset 里都没被选中时，Cookbook 要能把整个 group 在该 preset 上标记为 ineligible。后端已把「至少一个 eligible option」的下限**从 per-customization 改为 per-menu-item**，服务端不再拦截整组 ineligible。
 
-**1. 移除前端的前置校验（阻塞项）**
+**需求**
 
-前端自己也在调接口前做了「每个 group 至少一个 eligible option」的校验，**不删掉的话后端改动对用户完全不可见**（浏览器里照样被拦）。三处：
-
-- `src/page/item/customizationV2/component/CreateOrUpdate/components/CreateOptionForm.tsx:547` —— `Promise.reject("Please ensure at least 1 eligible option.")`
-- `src/page/item/customizationV2/component/Featured/OptionTableView.tsx:180` —— validator 返回同一字符串
-- `src/page/item/customizationV2/component/Presets/Edit/PresetFrom.tsx:197`、`:220` —— `message.error(...)` 同一字符串
-
-服务端的对应校验是**被删除**而非放宽 —— `Unable to save. Please ensure at least 1 eligible option.` 这条消息在后端已不存在。
-
-**2. 需要承接的新服务端报错**
-
-per-group 规则被 per-menu-item 规则替代，后端原样返回：
-
-```
-Unable to save. At least one eligible option is required for the entire featured customization.
-```
-
-仅当该 menu item / preset 的**每一个** featured customization 都没有 eligible option 时才触发；按设计它**不指名**具体是哪个 customization。
-
-**3. 消息优先级变化**
-
-新的 item 级校验**最后**执行。当 per-group 规则（min/max options、default 不可 ineligible 等）与 item 级规则同时被违反时，用户看到的是 per-group 消息（因为它指名了具体 customization）。任何断言消息顺序的测试 / 快照需要更新。
+1. **去掉「每个 customization group 至少要保留一个 eligible option」这条限制**，允许把整个 group 的 option 全部标为 ineligible。以下操作都不再做这项校验：
+   - 新建 / 编辑 customization（main menu item 侧）
+   - 编辑 preset 的 customization
+   - 删除 option —— 原本最后一个 eligible option 的删除按钮是禁用的，现在放开
+2. **preset 的 customization 表格里，`Ineligible` 勾选框不再被置灰。** 原本的置灰规则是「快要没有 eligible option 时就不让再勾」，分两种：
+   - **非 multi-select**：当剩余 eligible option 的数量降到 min options 时，其余仍是 eligible 的行就不能再勾，提示 `The number of eligible options should >= {min options}`
+   - **multi-select**：当只剩最后 1 个 eligible option 时，那一行不能再勾，提示 `The number of eligible options should >= 1`
+   - 后果是「整组 ineligible」这个状态在界面上永远走不到 —— 例如一个 group 有 3 个 option，勾掉前两个之后第三个就变灰了，卡死在「至少留一个」
+3. **校验层级由 group 改为 menu item**：单个 group 全部 ineligible 是允许的；只有当该 menu item / preset 的**所有** featured customization 都没有 eligible option 时才拦下来，报错 `Unable to save. At least one eligible option is required for the entire featured customization.`
+4. **保持不变**：已被选中（selected）的 option 仍不能设为 ineligible；min / max options 与 eligible 数量的校验规则原样保留
 
 ---
 
@@ -151,61 +129,81 @@ UI - 调整 Wonder Create Debug Page 的 customization 逻辑
 > 主 ticket：[MD-18372](https://wonder.atlassian.net/browse/MD-18372)
 
 - 该 sub-task 与其主 ticket 均无描述，需求待补
-- 涉及页面为 Sprint 13 建的 Wonder Create 调试页（路由 `/wonder-create-debug`，见 MD-18057 / MD-18126）
 
 ---
 
-### [MD-18386](https://wonder.atlassian.net/browse/MD-18386)
+### [MD-18401](https://wonder.atlassian.net/browse/MD-18401)
 
-UI - Line build 分配：强制只有一个 'All' 选项，并提供优雅的切换流程
+UI - New UX - Line build 分配：强制只有一个 'All' 选项，并提供优雅的切换流程
 
-> 主 ticket：[MD-18369](https://wonder.atlassian.net/browse/MD-18369)
+> 主 ticket：[MD-18392](https://wonder.atlassian.net/browse/MD-18392)
+> 本 sub-task 只覆盖 **single version**；multi-usage / multi-version 见 [MD-18397](https://wonder.atlassian.net/browse/MD-18397)
 
-**背景**：Hudson Square 把 Pizza 菜单指向新的 Raw Dough 试点菜单后出现了分配问题 —— 很多试点 line build 没有可供 IKC 兜底的 "All" 选项，只有两个 line build 分配给了少量 IKC。原以为已有护栏保证 "All" 始终存在，实际并没有。现状是：创建 line build 时 `Apply to Restaurant` 默认为 `All`，但用户可以手动改成具体 restaurant，而 line build 是各自独立创建 / 编辑的，没有任何机制防止「缺少 All line build」。
+**背景**：Hudson Square 把 Pizza 菜单指向新的 Raw Dough 试点菜单后出现分配问题 —— 受影响的 menu item 上每条 line build 都绑定了具体 restaurant，**没有一条应用到 `All`**，IKC 找不到可兜底的默认 line build。原以为已有护栏保证 `All` 始终存在，实际并没有。
 
-**基本约束**
+根因是现状把两件事耦在了一起：`Apply To Restaurant(s)` 是 line build 编辑页表单里的一个字段，跟 task 一起保存。于是「这个 menu item 有没有 All」这个问题，只能在每条 line build 各自保存时局部地看，无法在正确的时机整体校验。
 
-- 一个 menu item 下**只能有一个** line build 映射到 `All` restaurants
-- 有 line build 的 menu item **必须**有一个 `All` line build（不在 IKC 烹饪的 menu item 没有 line build，不受此约束）
-- **强制第一个**创建的 line build 应用到 `All`，并把 `Apply To Restaurant(s)` 置灰
+目标：
+1. 一个 menu item 下**只能有一个** line build 应用到 `All`
+2. 有 line build 的 menu item **必须**有一个 `All` line build（不在 IKC 烹饪的 menu item 没有 line build，不受此约束）
 
-**多版本场景下的「每个维度都要有 All」**
 
-- `Multi versions vs options = true` 时，**每个 option value** 都需要一个 apply to `All` 的 line build
-  - 例：customization `Choose Your Protein` 的 option value 为 Chicken / Tofu / Beef / No Protein，若 line build 1 是「Chicken + All」，则还必须有 Tofu / Beef / No Protein 各自的 All line build
-  - 不满足时，在 line build 页 **Bad Data 消息的最顶部**提示
-- `Is Multi-usage qty Item = true` 时，**每个 qty 区间**都要有 `applied restaurant = All` 的 line build
-  - 例：已有「Cresskill + 1-3」和「Jake Downtown + 4-max」两个 line build，则还必须有「All + 1-3」和「All + 4-max」
-  - 不满足时同样在 Bad Data 消息最顶部提示
+**需求**
 
-**创建 / 编辑时的校验**
+1. **创建 line build**
+  ![alt text](image-1.png)
+   - 一条都没有时 → 面板显示空状态 `No line build yet` / `The first line build you create must apply to All restaurants.` + 居中按钮 `+ Create Line Build`；右上角原按钮去掉
+   - **第一条恒为 `All`**，没得选所以**不弹窗**，点了直接进编辑页
+   - ![alt text](image-2.png)
+   - 已有 line build 时 → 创建入口挪到 sub-tab 末尾的 `+`，点了弹窗选 restaurant，至少选一个才能继续；**提供 `All` 选项**（能不能真存下去交给后端校验）
+   - 点确认先调后端 check；不通过则弹窗不关、原地报错
+   - **弹窗确认时不创建任何数据** —— 只收集 restaurant，真正的创建发生在编辑页点 Save 时。因此用户在编辑页放弃退出不会留下空的 line build
+   - sub-tab 命名由 `Line Build 1` 改为 `Line Build 1(All)`，All 那条带 `(All)` 后缀
 
-- 创建非第一个 line build 且 `multiple versions = false`：用户可选 restaurant，若选了 `All` 则检查是否已存在其他 `All` line build，存在则报错并**阻止把值填入** `Apply To Restaurant(s)`
-  - `There is already one line build for All' restaurants.`
-- 创建非第一个 line build 且 `multiple versions = true`：若选了 `All` 且指定了 `Option Value` / `Apply To Value(s)`，检查是否已存在「映射该 option 且 apply to All」的 line build，存在则报错并阻止填入
-  - `There is already one line build mapped with this option/option value for All' restaurants.`
-- 上述两条校验同样要作用于**任何 line build 的编辑**（用户可能在修正历史脏数据）
-- 创建非第一个 line build 且 `multiple versions = true`、用户指定了 `Apply To Value(s)`：检查是否已存在「映射该 option 且 apply to All」的 line build
-  - 已存在 → 无动作
-  - 不存在 → 弹窗把 `Apply To Restaurant(s)` 默认改为 `All`
-    - Header `Change Apply to Restaurants`
-    - 正文 `There must be line build applied to All restaurants for {option name}, will change the apply to restaurant to All. Please create another line build for specific restaurant later.`
-    - 按钮 `Cancel` / `Confirm`；`Cancel` 清空 `Apply To Value(s)` 里的该 option，`Confirm` 把 `Apply To Restaurant(s)` 改为 `All` 并置灰
-  - `selected option value amount` 场景遵循同样逻辑
+1. **编辑 restaurant（解耦出来的独立入口）**
+   - 每条 line build 的 `⋮` 菜单新增 `Assign Restaurants`，打开弹窗、预填当前 restaurant
+   - 可选具体 restaurant 或 `All`；保存时调后端 check，不通过则原地报错
+   - **只改 restaurant 归属，不动这条 line build 的 task**
+   - 配套：**编辑页里的 `Apply To Restaurant(s)` 全场景置灰** —— create / duplicate / edit 三种进入方式都不可编辑
 
-**删除时的「提升」流程**
+2. **restaurant 选择器用现有组件**
+   - 弹窗里的选择器**不新做**，直接用编辑页现在那个（抽成公用组件），保证两处长得一样、行为一致
+   - 现有组件已自带：多选、搜索、已选 tag、一键清空、`All` 选项、HDR 品牌标签、长名 Tooltip、loading 态，以及「选 `All` 就清掉具体 restaurant、选具体 restaurant 就去掉 `All`」的互斥逻辑
 
-- 只有一个 line build 时，**不**置灰删除操作
-- 超过一个 line build 时，删除的是 `All` 那个，则弹窗让用户指定另一个现有 line build 作为 `All`
-  - Header `Promote Line Build to All`
-  - 正文 `There must be line build applied to All restaurants, please promote another line build to 'All' before deletion.`
-  - 单选列表，每项格式 `Line build #-{option name}（或 selected option value amount {amount}），apply to restaurants: {restaurant 1}, {restaurant 2} (show more)`（默认显示 2 个 restaurant，hover 展示全部）
-  - 按钮 `Cancel` / `Confirm`
-  - 候选列表规则：排除被删除的那个；排除其他 `All` line build（multiple 开启时不同 option 可各有一个 All）；排除 option 不同的；排除 selected option value amount 不同的；按 line build 编号**升序**排列
+3. **编辑页离开时的二次确认**
+   - 从新页面进 create / edit 编辑页后，**只要表单动过，离开就弹确认**；没动过则直接走，不拦
+   - 覆盖三个出口：`Cancel` 按钮、站内跳转 / 浏览器返回、刷新或关标签页
+   - 参考 assembly 的现成实现（`assemblyInstructions/component/AssemblyInstructionIndex.tsx:167-180`）：标题 `Unsaved Changes`、正文 `You have unsaved changes on the form. Are you sure you want to leave?`、确认按钮 `Continue`；脏判断用一个 flag 记录用户是否真的改过
+   - ⚠️ create 模式进来时页面已经自动生成了一个 3 步空脚手架，**不能把脚手架本身当成「改过」**，否则用户点错进来想退出也会被拦
 
-**移除的旧校验**
+4. **从其他 line build 复制 details**
+   - `⋮` 菜单新增 `Copy from other Line Build`，二级菜单列出**除当前这条以外**的所有 line build，选中后二次确认「会覆盖当前这条的数据且不可撤销」
+   - **只覆盖 task，不改 restaurant 归属** —— 这是它和 `Duplicate` 的根本区别
+   - 只有一条时禁用，提示 `No other line build to copy from`
+   - 用途：想让 line build 2 的做法成为默认，就把它的 details 复制到本来是 `All` 的 line build 1
 
-- 移除现有「缺少与所选 restaurant + 指定 option 相匹配的 line build」这条校验 —— 因为现在已保证存在覆盖全部 restaurant 的 line build
+4. **Duplicate**
+   - 现状：直接跳编辑页，在编辑页里选 restaurant
+   - 改为先弹窗分配 restaurant（复用创建那个弹窗），check 通过后跳编辑页、带入复制出来的数据，restaurant 置灰
+
+5. **删除 line build**
+   - 现状：无条件可删
+   - 点 `Delete Line Build` 先调后端 check，按返回渲染三种结果之一：不允许删（展示后端给的原因）/ 允许删（二次确认）/ 允许删但要指定接班人（弹窗让用户从候选里选一条接管 `All`）
+   - 只剩一条时可删（不在 KDS 烹饪的 menu item 本来就不需要 line build）
+
+6. **校验全部由后端驱动**
+   - 「有且只有一个 `All`」这条规则**前端不实现**，只调 check 接口 + 渲染返回结果。三个调用点：创建弹窗确认、`Assign Restaurants` 保存、`Delete` 点击
+
+7. **本次只做 single version**
+   - 新交互只对 `Is Multi-usage qty Item` 与 `Multi versions vs options` **都关闭**的 item version 生效；任一开启的保持现有界面完全不变（含 `Configuration` 下拉）。新界面上**不展示 `Configuration`**
+   - 原因：开了开关的 item version，每条 line build 必须带 scope（`Apply To Option` / `Option Value`）。新创建流程不收集这些字段，让这类 item 走新流程会落下 scope 为空的脏数据或直接被后端拒绝
+
+
+**待确认问题**
+
+1. **在编辑页刷新怎么办？** 弹窗选的 restaurant 只在前端内存里，刷新就没了。目前方案是退回 Line Build tab 让用户重来（此时他一个字都还没填，损失为零）。若要求刷新后保住选择，弹窗确认时就必须落库，等于回到「会产生空 line build」的模型，要额外做清理逻辑
+2. **`Assign Restaurants` 能不能真的把默认切到另一条？** Case 2 说保存时校验「有且只有一个 `All`」。那从 `{LB1=All, LB2=A,B}` 切成 `{LB1=C,D,E, LB2=All}` 该怎么操作？先改 LB1 会变成零条、先改 LB2 会变成两条，两边都触发这条校验。是不是意味着它只能增减具体 restaurant、换默认只能走第 4 点的 copy？
+3. **隐藏 `Configuration` 的三个连带影响**：① 用户没法再把 single version item 改成 multi，过渡期能接受吗 ② 这两个开关是 **item version 维度**（不是 item 维度），同一个 item 切版本时界面会在新旧之间跳（V6 multi / V7 single）③ `Create New Version` 时开关继承吗，若继承则现存 multi item 在 MD-18397 之前永远进不了新界面
 
 ---
 
@@ -215,3 +213,14 @@ UI - Concept / Brand 列表页的 Create 按钮位置优化
 
 - 现状：首次打开 Concept / Brand 列表页时看不到 `Create` 按钮（需滚动或其他操作才出现）
 - 调整按钮位置，使其在页面首屏即可见
+
+
+### [MD-18377](https://wonder.atlassian.net/browse/MD-18377)
+
+CLONE - [Tech] 给所有功能补齐 Amplitude 埋点
+
+> 主 ticket（Epic）：[MD-17231](https://wonder.atlassian.net/browse/MD-17231) @2026 Cookbook Technical Excellence
+
+- 上一轮已覆盖导入 / 导出入口，本轮继续排查全站其他关键操作的遗漏埋点
+
+---
