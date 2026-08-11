@@ -60,6 +60,13 @@
    - 正文：`The main menu item has no longer sold in the below restaurants, is it ok to remove them for saving the line build? Invalid restaurants: {restaurant name1}, {restaurant name2}.`
    - 按钮：`Cancel`、`Yes`
 
+**待确认问题**
+
+1. 全部 restaurant 都失效时的话会变成all
+   ![alt text](image-3.png)
+
+2. 弹窗在保存流程里的位置，现在是放在KDS portion 校验的签名
+
 ---
 
 ### [MD-18347](https://wonder.atlassian.net/browse/MD-18347)
