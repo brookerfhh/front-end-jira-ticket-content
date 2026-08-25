@@ -115,3 +115,11 @@ Nutrition 卡片展示 `Derived from` 来源，并给不参与营养计算的 WS
 edit linebuild 页面 点击step的时候，展开当前task，收缩其他的task
 
 
+
+
+### [MD-18487](https://wonder.atlassian.net/browse/MD-18487)
+
+`[Bug] The jump link is incorrect.` —— item detail 顶部的 line build 报错横幅，点进去落到了旧的 `Line Build` tab
+
+
+![alt text](image-4.png)
