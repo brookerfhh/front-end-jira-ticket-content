@@ -5,7 +5,7 @@
 
 | Key | 摘要 (Summary) | UI sub-task | 前端工作 |
 | --- | --- | --- | --- |
-| [MD-18391](https://wonder.atlassian.net/browse/MD-18391) | Display 'Unavailable' indicator for WSKU items without fulfillment in nutrition card | [MD-18467](https://wonder.atlassian.net/browse/MD-18467) | 小，1 个表格列 |
+| [MD-18391](https://wonder.atlassian.net/browse/MD-18391) | Display 'Unavailable' indicator for WSKU items without fulfillment in nutrition card | [MD-18467](https://wonder.atlassian.net/browse/MD-18467) | **已交付**（需求 8/24 扩过范围：`Derived from` 来源展示 + chip） |
 | [MD-18454](https://wonder.atlassian.net/browse/MD-18454) | Initialize Accounting Type & Accounting Sub-Type for 9\* items | [MD-18468](https://wonder.atlassian.net/browse/MD-18468) | 主体是后端数据初始化；前端只在选项集合有变化时需改硬编码的选项树 |
 | [MD-18455](https://wonder.atlassian.net/browse/MD-18455) | Add free text label/description box for line builds | [MD-18469](https://wonder.atlassian.net/browse/MD-18469) | **已交付** |
 | [MD-18465](https://wonder.atlassian.net/browse/MD-18465) | UI - Apply the template change to brand BYO/presets | 本身即 sub-task | 大，且影响面覆盖全部 menu item |
@@ -28,8 +28,8 @@
    1. Confluence Case 4/5 明确标 **Need code change** —— 现状 normal menu item 可以在 active version 删
    2. Final（active）version 上置灰，tip：`Please delete it in future version.`
    3. **不分 normal menu item 还是 wonder create item**
-2. Final version 上 `Min Options` / `Max Options` / `Ineligible` / `Required` / `Free Options` 置灰，tip：`Please revise it in future version.`；scheduled version 上仍可编辑
-   1. 同样不分 normal / wonder create
+<!-- 2. Final version 上 `Min Options` / `Max Options` / `Ineligible` / `Required` / `Free Options` 置灰，tip：`Please revise it in future version.`；scheduled version 上仍可编辑
+   1. 同样不分 normal / wonder create -->
 3. `Duplicate Option with Different ID` 确认弹窗（**Confluence 独有，ticket 正文没写**）
    1. 触发：在 **template 的 scheduled version** 里保存 customization/option 时，与 active version 比对**同一个 customization 下**的 option name（大小写不敏感、必须完全一致），name 相同但 UUID 不同
    2. Header：`Duplicate Option with Different ID`
@@ -62,18 +62,20 @@
 - 
 ### [MD-18391](https://wonder.atlassian.net/browse/MD-18391)
 
-40\* item 的 Nutrition 卡片里，给不参与营养计算的 WSKU 打 `Unavailable` 标
+Nutrition 卡片展示 `Derived from` 来源，并给不参与营养计算的 WSKU 打 `Unavailable` 标
 
-> 主 ticket（Epic）：[MD-17501](https://wonder.atlassian.net/browse/MD-17501) Supply Chain Catalog Integration
+> UI sub-task [MD-18467](https://wonder.atlassian.net/browse/MD-18467) 
 
-**背景**：40 item 的营养值优先由可用的 41/42 WSKU 计算得出，取不到时才从 `40*F` 继承。但一个 42 item 可能同时满足「没有配置 fulfillment option」+「没有对应的 `W42F` 可继承」+「不是 dormant」——它不参与 40 的营养计算，却照样列在 Nutrition 卡片的 Linked WSKU 里。它自己的营养数据也不会被自动清空，于是用户会误以为这行有效。
+**背景**：40 item 的营养值优先由可用的 41/42 WSKU 计算得出，取不到时才从配对的 `40*F` 继承。但一个 42 item 可能同时满足「没有配置 fulfillment option」+「没有对应的 `W42F` 可继承」+「不是 dormant」—— 它不参与 40 的营养计算，却照样列在 Nutrition 卡片的 Linked WSKU 里，自己的营养数据也不会被清空，于是用户会误以为这行有效。反过来，用户也无从知道当前这份营养值究竟是从哪里算来的。
 
 **需求**
 
-1. 在 Nutrition 卡片 `Linked WSKU` tab 中，于 item number 下方增加一个 `Unavailable` chip/badge，表明该 item 不能用于营养计算。
+40* 和 `40*F` item detail 的 nutrition 卡片：展示 `Derived from {nutrition source of WSKU1}, {nutrition source of WSKU2}`
+ 1. 只列**参与计算的那些 WSKU** 
+ 2. 每个来源都是超链接，跳 WSKU detail 页面
+ 3. 对**没有参与计算**的 linked WSKU，在 item number 下方显示 **橙色 `Unavailable` chip**
+ 4. 更新tip：Nutrition of 40*/40*F is calculated from its linked available WSKU respectively. 40* item nutrition is inherited from the paired frozen state 40*F item when no available WSKU linked with it.
 
-
----
 
 ### [MD-18454](https://wonder.atlassian.net/browse/MD-18454)
 
