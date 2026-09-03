@@ -5,6 +5,15 @@
 
 ## 前端需求拆解
 
+### [MD-18490](https://wonder.atlassian.net/browse/MD-18490) —— 前端 Snyk 漏洞修复（12 条，2026-08-25 扫描）
+
+> 主 ticket。Epic：MD-17251 @2026 Cookbook Devops Action
+
+修复 cookbook 和 pcs 的漏洞 
+剩下一个 react-router
+
+
+
 ### [MD-18497](https://wonder.atlassian.net/browse/MD-18497) —— 移除 'Create New WSKU Items' 权限
 
 > 主 ticket。Epic：MD-17264 @2026 Regular optimization in Cookbook
