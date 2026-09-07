@@ -3,11 +3,12 @@
 > 更新时间：2026-07-27
 > 查询条件：`key in (MD-18318, MD-18317, MD-18316)`（本 sprint 按指定范围只写这 3 个 ticket）
 
-| Key | 摘要 (Summary) |
-|-----|----------------|
-| [MD-18318](https://wonder.atlassian.net/browse/MD-18318) | UI - Enable to Search Cooking Group Tagged on Task |
-| [MD-18317](https://wonder.atlassian.net/browse/MD-18317) | [Tech] - add Amplitude |
+| Key                                                      | 摘要 (Summary)                                                                                                     |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| [MD-18318](https://wonder.atlassian.net/browse/MD-18318) | UI - Enable to Search Cooking Group Tagged on Task                                                               |
+| [MD-18317](https://wonder.atlassian.net/browse/MD-18317) | [Tech] - add Amplitude                                                                                           |
 | [MD-18316](https://wonder.atlassian.net/browse/MD-18316) | Remove "Enable non-40 item" Flag and Add Validation Restricting Component/Customization Search to 40/70/90 Items |
+|                                                          |                                                                                                                  |
 
 > 说明：3 个 ticket 均为本 sprint 新增，无沿用 Sprint 15 的条目。Sprint 15 未完成的其余 ticket（MD-18258 / MD-18243 / MD-18151 / MD-17869 / MD-18084 等）本次未纳入清单。
 
@@ -23,18 +24,19 @@ UI - 支持搜索 line build task 上打的 Cooking Group
 
 **背景**：[MD-18165](https://wonder.atlassian.net/browse/MD-18165) 已支持在 menu item 的 line build task 上打 cooking group 标签。现在用户希望：无论 cooking group 是打在 **menu item 本身（attribute card）** 还是打在 **line build task** 上，都能被搜索到。
 
-- **Attribute 表格（item 下方的 attribute usage 表）**：需要把打在 line build task 上的 cooking group 也一并展示
+- **Attribute search 页面（item 下方的 attribute usage 表）**：需要把打在 line build task 上的 cooking group 也一并展示
+
+  加个checkbox 'Including Line Build'搜索字段, 默认不勾选
   - 列定义调整为：`Attribute Name`、`Type`、`Value`、`Tagged On`、`Note`、`Updated Time`、`Updated By`
   - **删除**现有的 `Created Time`、`Created By` 两列
   - `Tagged On` 取值：`Attribute Card` 或 `Line Build`
   - `Note`：当 tagged on line build 时，展示「版本号(版本状态)-line build 编号」，例如 `V2 (Scheduled)-Line Build 1`
-  - **版本范围**：只展示 active final version、scheduled version、draft version（忽略 expired version 和 variant）
-- **排序**：同一个 menu item 若在 attribute card 和 line build task 上都打了 cooking group，**attribute card 的 attribute 排在前面**
-- **搜索**：按 cooking group 或某个具体 cooking group attribute value 搜索时，只要 item 的 attribute card **或** line build task 上带该 attribute，就应命中并返回该 menu item
-  - 同样限定 active final version / scheduled version / draft version
-- **文案**：标题 `Items' Attributes Usage` 改名为 `Items' Attributes Usage Tagged on Attribute`
+- 排序：同一个 menu item 若在 attribute card 和 line build task 上都打了 cooking group，**attribute card 的 attribute 排在前面**
 
-> 前端关注点：列的增删属于表格结构改造（`Tagged On` / `Note` 为新列，需后端返回来源与版本/line build 编号）；搜索命中范围扩大主要在后端，前端需确认返回结构里同一 item 的多条 attribute 记录如何聚合与排序。
+- tip修改：标题 `Items' Attributes Usage` 改名为 `Items' Attributes Usage Tagged on Attribute`
+
+
+
 
 ### [MD-18317](https://wonder.atlassian.net/browse/MD-18317)
 

@@ -26,7 +26,7 @@ UI - 为 7* (HDR Recipe) item 增加 ea → g 的 Unit Conversion
 **背景**：minimal serving portion 以 portion → g（克）配置；7* (HDR Recipe) item 可能 machine eligible 或作为 Wonder Create 组件，其 BOM unit 为 `ea`（each），存在单位不匹配，需要把 recipe 的 `ea` BOM unit 与克制的 serving portion 打通。
 
 - **UI 位置**：在 7* item 详情页的 food science card **上方**新增一张 Unit Conversion card，允许用户设置和管理单位换算（如 `ea → g`）
-  - 换算的校验逻辑复用其他 object type item 上已有的 unit conversion 校验
+  - 大部分逻辑复用其他 object type item 上已有的 unit conversion 校验
   - 编辑的时候，如果7* item已经 publish过，用户修改 unit conversion 时 `ea → g` 必须保留、不允许删除，报error `Unable to save. Missing required unit conversion: ea → g.`
 - **publish的时候需要校验**：`ea → g` 是 7* item 发布的必填换算，缺失时拦截发布并报错 `Unable to publish the version. Missing required unit conversion: ea → g.`
 - **Change Log**：unit conversion 变更需记录到 change log

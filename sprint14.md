@@ -89,12 +89,12 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 
 - 在「Usages」card 新增 IK Portion Conversion 区块，点击「Add」打开配置弹窗（交互参考 KDS portion 的配置弹窗），仅需配置一个 `x portion = x g` 的换算，并显示提示 `The IK portion conversion is required for IK Pod.` success message？
 - IK Portion Conversion 是 component 级别的：active final 或 scheduled version 任一改动都会同时作用于两个 version（active 的改动也同步到 draft）；当前为 final 或 scheduled version 时，才在「Add」按钮处以 tip 展示 `The change will be implied in both active and future versions.`
-- 如果当前是draft version 中并且该item 存在已经publish 过的version 的时候，置灰按钮不可编辑，并在「Add」按钮处以 tip 展示 `Please update it in active version.`不包含过期
+- 如果当前是draft version 中并且该item 存在已经publish 过的version（不包含过期）的时候：**Add 仍可点**，仅 edit/delete 置灰，hover tip 展示 `Please update it in active version.`（6/30 后由「全置灰」改为「只锁 edit/delete」）
 - 当 machine eligible=true 时，发布 component 需校验 portion → g 换算必填，缺失则拦截发布并显示 error 提示
 - 在 edit attribute 弹窗保存时，遍历属性列表，只要其中有一项 attribute name = 「machine eligible」且值为 yes，就校验当前 item 是否已配置 IK Portion（portion → g 换算）：已配置则直接保存通过、不弹窗；未配置则弹出「配置 IK Portion Conversion」弹窗，用户配置保存后返回 edit attribute 弹窗，点取消同样返回 edit attribute 弹窗
 - attribute 值设为 no（或未勾选）时不触发上述校验
 - 「配置 IK Portion Conversion」弹窗需做成可复用组件（「Usages」card 常规入口与 edit attribute 联动流程共用）
-- Move to variant 场景：variant 中 IK Portion Conversion 区块置灰禁止编辑，提示 `Please maintain it in normal version.`
+- Move to variant 场景：variant 中整块 IK Portion Conversion 区块**不展示**（6/30 后由「置灰」改为「隐藏」）
 - Change Log 也要加上 IK Portion Conversion 字段
 
 > ⚠️ 6/30 更新（Bonnie）：功能更名为 **Minimal Serving Portion Conversion**；区块对**所有 object type**展示；提示语改为 `The minimal serving portion conversion is required for IK Pod and Wonder Create Item.`；发布/edit-attribute 校验触发条件增加 **wonder create=eligible**；新增两个权限点（common + benchtop）；输入框限正整数。
@@ -118,7 +118,7 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 - [ ] active(FINAL)/scheduled：可增删改；hover 按钮显示 `The change will be implied in both active and future versions.`
 - [ ] draft 且有未过期已发布版本：**Add 可点**；编辑/删除置灰，hover `Please update it in active version.`
 - [ ] draft 且只有过期已发布 / 从未发布：增删改都可用
-- [ ] variant：Add + 编辑 + 删除全置灰，hover `Please maintain it in normal version.`
+- [ ] variant：整块 Minimal Serving 区块**不展示**
 - [ ] 过期版本：只读无按钮
 - [ ] 无权限：只读无按钮
 
@@ -148,7 +148,7 @@ UI - 在 Component 级配置 IK Portion Conversion（份量换算）
 **8. 版本继承 / 复制（后端行为，前端验证展示）**
 - [ ] 复制新版本 / 新 item：换算一并复制
 - [ ] Move to draft：draft 继承 active 换算
-- [ ] Move to variant：不复制到 variant，且区块置灰
+- [ ] Move to variant：不复制到 variant，且区块不展示
 - [ ] active/scheduled 改动 → 两个版本都生效并同步 draft
 
 > 重点回归：#3 版本管控（draft 的 Add 可用 / edit-delete 锁）、#5 edit-attribute 联动、#7 change log 高亮。

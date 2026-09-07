@@ -5,35 +5,99 @@
 ## 前端需求拆解
 
 ### [MD-18339](https://wonder.atlassian.net/browse/MD-18339)
+MD-18384
 
 用新设计重做 Line Build 的 Training Card 导出（PDF）
-
-前端清理一下代码，导出改为后端导出。
----
+前端清理一下代码，导出改为后端导出，会在
 
 ### [MD-18346](https://wonder.atlassian.net/browse/MD-18346)
 
 给 Customization Option 增加 `Required` 标记，以驱动 Menu Item 置 OOS
 
 > 主 ticket（Epic）：[MD-17762](https://wonder.atlassian.net/browse/MD-17762) Wonder Create Integration
+> 前端 sub-task：[MD-18382](https://wonder.atlassian.net/browse/MD-18382)（sub-task 本身 description 为空，需求全在 MD-18346）
+> **后端字段**：`is_required`（`Boolean`，无 `@NotNull`，所以生成物是 `boolean | null`，**null 视为 false**）
 > **时间要求（ticket 原文）**：team 需要它用于 **9/23 pizza launch**，因此「9 月初就要 ready」
 
-**背景**：Chicken Salad 这个 menu item 在鸡肉库存不足时不会显示 OOS（因为其他 customization option 还有货），但业务上主料缺货时该 menu item 就应该不可售。
+**背景**：Chicken Salad 这个 menu item 在鸡肉库存不足时不会显示 OOS（因为其他 customization option 还有货），但业务上主料缺货时该 menu item 就应该不可售。现有的 required 配置只服务于 Pantry 库存计算，不影响 Wonder App。
+
+判定规则（ticket 原文举例）：Chicken Bowl 的 chicken option 标为 required、default portion = 2 →
+
+- 鸡肉库存 < 2：整个 menu item 在 Wonder App 置 OOS
+- 鸡肉库存 >= 2：顾客仍可取消 chicken 换 tofu，或在库存范围内改份量
 
 **需求**
 
-1. 给 customization option 新增 `Required` 标记：
-   1. 只适用于 customization type = `mandatory choice`（其中 `none` 选项排除，置灰）
-   2. 可在 **main menu item** 和 **preset** 上分别配置
-   3. 同一个 customization group 内允许勾选多个 option 为 required
-   4. `ineligible` 与 `required` **不能同时勾选**，勾选其一则另一个置灰，并显示 tip
-2. 当 max options 不为 null 时，required option 的 portion qty 或 option 数量应 `<= max options`（**ticket 原文标注 TBD**），报错文案：
-   - `Unable to save. Required option amount should be <= max options ({value}).`
-3. `required` 标记要进 change log
-4. copy new item / create new version 时**继承** `required` 标记
-5. variant item 版本 Required gray out
+- 给 customization option 新增 `Required` 标记，**不论有没有 preset 都要有**：
+  - Tip 文案：`The option is integral for menu item. The menu item will be OOS once the option inventory qty < default portion.`
+  - 默认 `False`
+  - 只适用于 customization type = `mandatory choice`（其中 `none` 选项排除，置灰）
+  - 可在 **main menu item** 和 **preset** 上分别配置
+  - 同一个 customization group 内允许勾选多个 option 为 required（上限受 max options 约束，该校验归后端）
+  - `ineligible` 与 `required` **不能同时勾选**
+    - 新方案下这条天然成立（见下方状态模型），**所以 `Required option cannot be ineligible.` 这句文案在产品里完全不出现**（已跟 RA 确认）
+    - 原因：它指的方向是错的。一行是「默认项 + 必需」时，要勾 Ineligible 得取消 **Default option**（取消 Required 没用，它仍是默认项）；反过来一行是 Ineligible 时，勾 **Default option** 会自动清掉 Ineligible，一步就通。所以两个方向上"可操作的原因"都是 default flag 那条，报冲突反而把人引到无效步骤
+    - 各控件只报真正能解开的那条：Required 侧 `是 none` / `Set the option as a default option first.`；Ineligible 侧 `Cannot set selected option as ineligible.`（master 原有文案）
+    - **也不做保存时校验**：互斥由置灰保证，保存时再查是永远走不到的死代码（原先三处已清掉）。真正需要的是加载时的 `normalizeRequiredFlag`——它防的是脏数据，不是用户操作
+  - 除 **expired version** 外，所有版本都可配置
+- **option 为 required 时，在 option 名称旁显示蓝色 `Required` chip**：
+  - Preset view ✅
+  - Customization list view ✅
+  - Edit preset view —— 这里是**勾选框列**，不放 chip（同一行已经有勾选框表达状态）
+  - Edit customization view —— 同上，改成勾选框列后 chip 去掉了（连原有的 `Ineligible` chip 也一并去掉，否则只留一个像 bug）
+- `required` 标记要进 change log，同样以蓝色 chip 展示
+  - menu item 的 change log ✅（`CustomizationCardAJAXView` 有 `is_required`）
+  - preset 的 change log ❌ —— **后端 `CustomizationPresetCardAJAXView` 没有这个字段**，无数据可渲染。要补的话得让后端加 `isRequired`
+  - ⚠️ change log 的 diff 高亮靠 className 匹配字段路径，所以类名也得是 `_is_required`
+  - ⚠️ 老版本存的是 `null`、新版本存 `false`，`deep-diff` 会判成变化 → 数据没变也高亮。渲染、卡片级 diff、页面级 diff 三处都要把 `null` 落成 `false`
+- copy new item / create new version 时**继承** `required` 标记
+- variant item 版本 Required gray out
+- non type
 
----
+**新增需求（2026-08-13，RA 尚未确认）**
+
+- **`Required` 必须先勾上 `Default option` 才能勾**。语义上依赖 default portion（tip 文案就是「库存 < default portion 就 OOS」），而 default portion 只在 `Default option` 勾上时才有值，所以实现上判断的是 `Default option`
+- **Edit customization 的 option 列表改成有标题的列**，最终列序：
+
+  `Customization Options | Default option | Default Portion | Required | Ineligible | (删除)`
+
+  - 四个控件的标题统一放到列表**表头**那一行，行内不再带文字标签
+  - `Default option` 在 `Default Portion` **前面**
+  - option 详情表单（Add Option / Edit Option 那个抽屉）里 `Required` / `Ineligible` **隐藏，但值照旧提交给后端**
+  - 代价：从 customization 列表页的 `Add Option` / `Edit` 进去改不了这两个字段，要改得走 customization 卡片的编辑（能看到 option 列表那个入口）
+  - 抽屉宽度 616px → **820px**
+  - ⚠️ 表头必须和行**放在同一个容器**里。原来标题在 `Form.Item` 的 `label` 盒子、行在 control 盒子，两个盒子宽度不同，无论怎么对齐格子宽度都不可能重合
+- **preset 编辑表的列序同步成 `REQUIRED` 在 `INELIGIBLE` 前面**（原来是 append 在后面，和抽屉相反）。Jira description 没规定列序，以和抽屉一致为准
+- **`Ineligible` 与 `Default option` 的联动照 edit preset 那边现成的做法**：勾 `Default option` 时主动清掉 `Ineligible`；`Default option` 勾着时 `Ineligible` 置灰，提示 `Cannot set selected option as ineligible.`
+
+**状态模型**
+
+`Ineligible` 和 `Required` 都不直接和 default portion 联动，中间隔着 `Default option`：
+
+- 勾 `Default option` → `Ineligible` 自动取消并置灰；`Required` 解锁（值仍为关）
+- 取消 `Default option` → `Ineligible` 解除置灰；`Required` 自动取消并置灰
+
+一个 option 只有四种状态：
+
+| 状态 | Default option | Ineligible | default portion | Required |
+| --- | --- | --- | --- | --- |
+| 普通可选 | ✗ | ✗ | 无 | 灰 |
+| 默认项 | ✓ | ✗ | 有 | 可勾，默认关 |
+| 默认项 + 必需 | ✓ | ✗ | 有 | ✓ |
+| 不可选 | ✗ | ✓ | 无 | 灰 |
+
+- 「默认项 + 必需」不能直接变「不可选」，必须先取消 `Default option`（`Required` 跟着自动关），再勾 `Ineligible`
+- `Required` 与 `Ineligible` 因此天然互斥（一个要求是默认项、一个要求非默认项），不需要单独实现互斥置灰
+- **例外**：`MULTI_SELECT` 的 default portion 是手输的，用户可以清空。此时 `Default option` 仍勾着而 portion 为空，**`Required` 不跟着变灰**，靠现有的保存校验 `Unable to save. Default Portion is required.` 拦住即可
+
+**待确认问题**
+
+- **max options 限制（TBD，未落进 Jira description 文字）**：当 max options 不为 null 时，required option 的 portion qty 或 option 数量应 `<= max options`，报错文案 `Unable to save. Required option amount should be <= max options ({value}).`
+  - **归后端校验，前端不实现**，前端只把后端返回的报错透出来
+  - 口径备忘：`MULTI_SELECT` 的 max options 单位是 portion，其余类型是 option 个数（前端现有的 selected options 校验就是这么分的），required 大概率照同一套走
+- 上面「新增需求」整块 RA 还没确认。实现时拆成了两个 commit（① 规则与联动，② 挪位置 + 抽屉加宽）方便单独 revert，但**已经合进 develop**（`216b3ad0722`），所以要撤回不再是单独 revert 一个 commit 那么干净了
+- preset 的 change log 缺 `is_required`（后端 `CustomizationPresetCardAJAXView` 没加），需要跟后端确认是否补
+
 
 ### [MD-18356](https://wonder.atlassian.net/browse/MD-18356)
 
@@ -61,7 +125,7 @@
 1. 全部 restaurant 都失效时的话会变成all
    ![alt text](image-3.png)
 
-2. 弹窗在保存流程里的位置，现在是放在KDS portion 校验的签名
+2. 弹窗在保存流程里的位置，现在是放在KDS portion 校验的前面
 
 ---
 
@@ -107,8 +171,7 @@ UI - 允许把整个 customization group 标记为 ineligible
    - **非 multi-select**：当剩余 eligible option 的数量降到 min options 时，其余仍是 eligible 的行就不能再勾，提示 `The number of eligible options should >= {min options}`
    - **multi-select**：当只剩最后 1 个 eligible option 时，那一行不能再勾，提示 `The number of eligible options should >= 1`
    - 后果是「整组 ineligible」这个状态在界面上永远走不到 —— 例如一个 group 有 3 个 option，勾掉前两个之后第三个就变灰了，卡死在「至少留一个」
-3. **校验层级由 group 改为 menu item**：单个 group 全部 ineligible 是允许的；只有当该 menu item / preset 的**所有** featured customization 都没有 eligible option 时才拦下来，报错 `Unable to save. At least one eligible option is required for the entire featured customization.`
-4. **保持不变**：已被选中（selected）的 option 仍不能设为 ineligible；min / max options 与 eligible 数量的校验规则原样保留
+1. **校验层级由 group 改为 menu item**：单个 group 全部 ineligible 是允许的；只有当该 menu item / preset 的**所有** featured customization 都没有 eligible option 时才拦下来，报错 `Unable to save. At least one eligible option is required for the entire featured customization.
 
 ---
 
@@ -192,18 +255,12 @@ UI - New UX - Line build 分配：强制只有一个 'All' 选项，并提供优
 3. **编辑页离开时的二次确认**
    - 从新页面进 create / edit 编辑页后，**只要表单动过，离开就弹确认**；没动过则直接走，不拦
    - 覆盖两个出口：`Cancel` 按钮、站内跳转 / 浏览器返回
-   - **不做刷新 / 关标签页的拦截** —— `beforeunload` 用不了自定义文案，浏览器强制显示自己的通用对话框，做了也是那个样子；assembly 那个实现同样没做
-   - 文案照抄 assembly（`assemblyInstructions/component/AssemblyInstructionIndex.tsx:167-180`）：标题 `Unsaved Changes`、正文 `You have unsaved changes on the form. Are you sure you want to leave?`、确认按钮 `Continue`
-   - 脏判断用 `<Form onValuesChange>` 打一个 ref，2 行的事。不会误触发：表单初始化走的是 `form.setFields()`（`useLineBuildForm.tsx:87`），而 rc-field-form 的 `onValuesChange` 只在用户输入路径上触发，`setFields` / `setFieldsValue` 都不触发；页面里其他程序化写值（餐厅互斥、hot hold 回写、KDS 内联错误字段）同理
-   - ⚠️ 必须做脏判断，不能"进来就弹"：这个编辑页有 **readonly 模式**（`View Line Build` 走 `?readonly=true` 进的是同一个页面），只是来看一眼的用户退出时弹「你有未保存的修改」是错的；而且每次都弹会训练用户无脑点确认，真有内容那次也照点不误
-   - ⚠️ create 模式进来时页面已经自动生成了一个 3 步空脚手架，**不能把脚手架本身当成「改过」**，否则用户点错进来想退出也会被拦
+   - **不做刷新 / 关标签页的拦截** 
 
 4. **每条 line build 的操作栏重排（只改新 UI，旧 UI 一行不动）**
    - 现状（`lineBuildList/component/LineBuildTable.tsx`）：外面依次是 `View Line Build` / `Training Card` / `Edit Line Build` / `⋮`，`⋮` 里是 `Export to JSON` / `Duplicate` / `Delete`
    - 改为外面留三个：**`View Line Build` / `Assign Restaurants` / `Edit Line Build`**；`⋮` 里是 `Training Card`、`Export to JSON`、`Duplicate`、`Delete`，加上新增的 `Copy from other Line Build`
-   - `View Line Build` **不受编辑权限限制、恒在外面** —— `Assign Restaurants` 和 `Edit Line Build` 都要 `canEditByFlag && hasEditLineBuildPermission`，只读用户否则会一个外露按钮都没有
-   - `Training Card` 现在是个自带按钮 + 弹窗的组件（`TrainingCard/index.tsx`），收进菜单要把触发器和弹窗拆开，且不能改动旧 UI 的调用形态
-   - multi-usage / multi-version 走的旧 UI 保持原样，两套界面在这里故意不一致
+   
 
 5. **从其他 line build 复制 details**
    - `⋮` 菜单新增 `Copy from other Line Build`，二级菜单列出**除当前这条以外**的所有 line build，选中后二次确认「会覆盖当前这条的数据且不可撤销」
