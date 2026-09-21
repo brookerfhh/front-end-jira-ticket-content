@@ -1,8 +1,5 @@
 # Front-end Jira Tickets — Sprint 20
 
-> Sprint：`MD 2026 Sprint 20`，周期 **2026-09-21 → 2026-10-05**
-
-## 前端需求拆解
 
 ### [MD-18564](https://wonder.atlassian.net/browse/MD-18564)
 
@@ -16,16 +13,16 @@ Finance 需要 Cookbook 把 40/42 item 同步到 ERP。Item Grid 页已有 Sync 
 **需求**
 
 1. WSKUs & Consumables 页新增 `Sync to ERP` 按钮，位置在 filter 行末尾（`All Filters` / `Status` / `HDR Consumable` 之后）
-   - 允许选 41 和 42
-   - dormant item 的 checkbox 置灰，tip 文案改为 `Dormant item cannot be selected`
-   - 提交后若没有任何 item 可同步（只同步有 final version / SCC 状态为 active 的 41*/42*），报 `Unable to sync to ERP. No available item for syncing to ERP (only sync 41*/42* item which has final version/SCC status is active).`
-2. 点按钮后才出现 checkbox 列
+   - 点按钮后才出现 checkbox 列
    - 勾选任意 item 弹出底部条：`{n} item selected` + `Sync Items to ERP` 按钮，**底部条只有这一个按钮**
    - 点 `Sync Items to ERP` 触发同步
    - 点 `x` 清空所有勾选并关闭底部条；取消全部勾选亦自动关闭
    - 列头出现 all checkbox 支持全选
    - 底部条出现后禁用页面动作：搜索框、`Search`、`Clear`、`All Filters` 及各个 filter 下拉、`Show all filters`、`Columns`、`Create New`、`...`
-3. 提交成功提示：`Syncing items to ERP is in process, please see the final result in the Sync Log Job or slack channel 'md-erp-sync-alerts' for final result later.`
+   - 允许选 41 和 42
+   - dormant item 的 checkbox 置灰，tip 文案改为 `Dormant item cannot be selected`
+   - 提交后若没有任何 item 可同步（只同步有 final version / SCC 状态为 active 的 41*/42*），报 `Unable to sync to ERP. No available item for syncing to ERP (only sync 41*/42* item which has final version/SCC status is active).`
+1. 提交成功提示：`Syncing items to ERP is in process, please see the final result in the Sync Log Job or slack channel 'md-erp-sync-alerts' for final result later.`
 
 ### [MD-18588](https://wonder.atlassian.net/browse/MD-18588)
 
@@ -68,9 +65,10 @@ Line build 的 export/import 字段对齐 Duplicate（补 IK Dish Type）
 
 **需求**
 
-1. 让 export/import 与 Duplicate 拷贝同样的字段，包含 subtask 上的 IK Dish Type，然后还要看下 Duplicate 有处理而 export/import 漏掉的字段与逻辑
+1. 让 export/import 要包含 subtask 上的 IK Dish Type，然后还要看下 Duplicate 有处理而 export/import 漏掉的字段与逻辑
 2. export/import 
    - task 层：IK Dish Type、Cooking Groups
    - sub step：KDS portion flag —— 若 KDS portion 与目标 menu item 匹配则保留该值，否则在 KDS portion flag 上显示 inline error
-3. Duplicate 要把 Breaking Line 一起复制到新 line build
+1. Duplicate 要把 Breaking Line 一起复制到新 line build
+2. 解决之前一个 import KDS portion flag 上显示错误的 inline error
 

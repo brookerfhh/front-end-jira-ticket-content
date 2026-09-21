@@ -77,8 +77,21 @@ Bulk Swap / Bulk Edit BOM & Customization Usages 排除带 "Wonder Create" conce
 在弹窗那边直接过滤掉 不展示
 
 
+### [MD-18534](https://wonder.atlassian.net/browse/MD-18534) —— option 创建后禁用 none type toggle
+
+> 主 ticket。Epic：MD-17762 Wonder Create Integration
+
+**背景**
+
+Consumer App 上顾客可以选 customization 里的 none type option（`No Base`、`No Protein` 这种）。现在定下来这类 option 不给 Creator 看——Creator 不需要自己去配「不要某个食材」的 BYO customization，但 Consumer App 那边顾客照常能选。ticket 里「Wonder Create portal 过滤 none type option」「自动补进 brand BYO 并标 `ineligible=false`」这两块在别的系统做，**这边只做 toggle 禁用**。
+
+**需求**
+
+option 创建之后，`none type` toggle 置灰不可编辑
+
+
 ### [MD-18454](https://wonder.atlassian.net/browse/MD-18454)
 
-按用户给的表格重置 9\* item 的 `Accounting Type` / `Accounting Sub-Type`
+按用户给的表格重置 nonfood item 的 `Accounting Type` / `Accounting Sub-Type`
 
 前端这边要更新一下枚举的值
