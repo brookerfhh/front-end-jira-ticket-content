@@ -73,4 +73,5 @@ Line build 的 export/import 字段对齐 Duplicate（补 IK Dish Type）
    - task 层：IK Dish Type、Cooking Groups
    - sub step：KDS portion flag —— 若 KDS portion 与目标 menu item 匹配则保留该值，否则在 KDS portion flag 上显示 inline error
 3. Duplicate 要把 Breaking Line 一起复制到新 line build
+4. 解决 之前 import 时 KDS portion 展示错误的 inline error
 
